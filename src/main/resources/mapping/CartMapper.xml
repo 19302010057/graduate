@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.store.mapper.CartMapper">
+    <insert id="addProduct" parameterType="com.store.entity.user.Cart">
+        insert into cart(account,id,num,addTime)
+            values (#{account},#{id},#{num},#{addTime})
+    </insert>
+
+    <select id="existProduct" resultType="int">
+        select count(1) from cart where account=#{account} and id = #{id}
+    </select>
+
+    <delete id="deleteProduct">
+        delete from cart where account=#{account} and id=#{id}
+    </delete>
+
+    <delete id="delBatchProduct">
+        delete from cart where account=#{account} and id in
+        <foreach collection="ids" index="index" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+
+    <update id="modifyProductNum" parameterType="com.store.entity.user.Cart">
+        update cart set num=#{num},
+                        addTime=#{addTime}
+                    where account=#{account} and id=#{id}
+    </update>
+
+    <select id="getCartsByPage" resultType="com.store.entity.dto.CartItemDto">
+        select item.id, `name`,producer,birthday,marketPrice,price,description,put,img,`rank`,addTime,account, num
+         from item join cart on item.id = cart.id
+         where account=#{account} limit #{page},#{pageSize}
+    </select>
+
+    <select id="count" resultType="int">
+        select count(*) from item join cart on item.id = cart.id where account=#{account}
+    </select>
+
+    <select id="getItemCount" resultType="int">
+        select num from cart where account=#{account} and id=#{id}
+    </select>
+
+    <select id="getCartCount" resultType="int">
+        select num from cart where account=#{account} and id=#{id}
+    </select>
+</mapper>

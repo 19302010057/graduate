@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.store.mapper.ProducerMapper">
+
+    <insert id="addProducer" parameterType="com.store.entity.book.Producer">
+        insert into producer(name,showProducer,`rank`)
+            values (#{name},#{showProducer},#{rank})
+    </insert>
+
+    <delete id="deleteProducer">
+        delete from producer where id=#{id}
+    </delete>
+
+    <update id="modifyProducer" parameterType="com.store.entity.book.Producer">
+        update producer set name=#{name},
+                           showProducer=#{showProducer},
+                           `rank`=#{rank}
+                       where id=#{id}
+    </update>
+
+    <update id="modifyIsShow">
+        update producer set showProducer=abs(showProducer-1) where id=#{id}
+    </update>
+
+    <select id="getProducerCount" resultType="int">
+        select count(*) from producer
+    </select>
+
+    <select id="getProducerByPage" resultType="com.store.entity.book.Producer">
+        select * from producer limit #{page},#{pageSize}
+    </select>
+
+    <select id="getProducerNames" resultType="String">
+        select name from producer
+    </select>
+
+
+    <select id="getProducerById" resultType="com.store.entity.book.Producer">
+        select * from producer where id=#{id}
+    </select>
+
+    <select id="getProducerByName" resultType="com.store.entity.book.Producer">
+        select * from producer where name=#{name}
+    </select>
+
+
+</mapper>

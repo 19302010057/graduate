@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.store.mapper.OrderMapper">
+
+    <insert id="addOrder" parameterType="com.store.entity.order.Order">
+        insert into itemorder(orderId,account,addressId,orderTime,shipTime,getTime,evaluateTime,closeTime,orderStatus,logisticsNum,confirmTime,beUserDelete, logisticsCompany)
+            values (#{orderId},#{account},#{addressId},#{orderTime},#{shipTime},#{getTime},#{evaluateTime},#{closeTime},#{orderStatus},#{logisticsNum},#{confirmTime},#{beUserDelete},#{logisticsCompany})
+    </insert>
+
+    <insert id="batchAddOrderDetail" parameterType="com.store.entity.order.OrderDetail">
+        insert into orderdetail(orderId,itemId,num,price)
+        values
+        <foreach item="item" collection="list" separator="," index="">
+            (#{item.orderId}, #{item.itemId}, #{item.num}, #{item.price})
+        </foreach>
+    </insert>
+
+    <!--删除订单涉及了多表删除-->
+    <delete id="delOrder">
+        delete itemorder,orderdetail,expense from itemorder
+          left join orderdetail on itemorder.orderId=orderdetail.orderId
+          left join expense on itemorder.orderId = expense.orderId
+          where itemorder.id=#{id}
+    </delete>
+
+    <delete id="batchDelOrder" parameterType="Integer">
+        delete itemorder,orderdetail from itemorder
+          left join orderdetail on itemorder.orderId=orderdetail.orderId
+          where itemorder.id in
+        <foreach item="item" collection="list" separator="," index="" open="(" close=")">
+            #{item.id}
+        </foreach>
+    </delete>
+
+    <!--修改订单-->
+    <update id="modifyOrder" parameterType="com.store.entity.order.Order">
+        update itemorder set
+        <if test="addressId != null and addressId != ''">
+          addressId=#{addressId}
+        </if>
+        <if test="orderStatus != null and orderStatus != ''">
+            orderStatus=#{orderStatus}
+        </if>
+        <if test="beUserDelete != null and beUserDelete != ''">
+            beUserDelete=#{beUserDelete}
+        </if>
+        where id=#{id}
+    </update>
+
+    <!--修改物流信息-->
+    <update id="modifyLogistics">
+        update itemorder set logisticsCompany=#{logisticsCompany},
+                        logisticsNum=#{logisticsNum} where id=#{id}
+    </update>
+
+
+    <sql id="orderColumns">
+          o.id,
+          o.orderId,
+          o.account,
+          o.orderTime,
+          o.shipTime,
+          o.getTime,
+          o.evaluateTime,
+          o.closeTime,
+          o.orderStatus,
+          o.logisticsNum,
+          o.confirmTime,
+          e.`productTotalMoney` AS productTotalMoney,
+          e.`freight` AS freight,
+          e.`coupon` AS coupon,
+          e.`activityDiscount` AS activityDiscount,
+          e.`allPrice` AS allPrice,
+          e.`finallyPrice` AS finallyPrice,
+          a.`name` AS name,
+          a.`phone` AS phone,
+          a.`addr` AS addr,
+          a.`label` AS label
+    </sql>
+
+    <resultMap id="OrderDtoMap" type="com.store.entity.dto.OrderDto">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="orderId" property="orderId"/>
+        <result column="account" property="account"/>
+        <result column="orderTime" property="orderTime"/>
+        <result column="shipTime" property="shipTime"/>
+        <result column="getTime" property="getTime"/>
+        <result column="evaluateTime" property="evaluateTime"/>
+        <result column="closeTime" property="closeTime"/>
+        <result column="orderStatus" property="orderStatus"/>
+        <result column="logisticsNum" property="logisticsNum"/>
+        <result column="confirmTime" property="confirmTime"/>
+        <association property="expense" javaType="com.store.entity.order.Expense">
+            <id column="orderId" jdbcType="VARCHAR" property="orderId"/>
+            <result column="productTotalMoney" property="productTotalMoney"/>
+            <result column="freight" property="freight"/>
+            <result column="coupon" property="coupon"/>
+            <result column="activityDiscount" property="activityDiscount"/>
+            <result column="allPrice" property="allPrice"/>
+            <result column="finallyPrice" property="finallyPrice"/>
+        </association>
+        <association property="address" javaType="com.store.entity.user.Address">
+            <id column="id" jdbcType="BIGINT" property="id"/>
+            <result column="name" property="name"/>
+            <result column="phone" property="phone"/>
+            <result column="addr" property="addr"/>
+            <result column="label" property="label"/>
+        </association>
+    </resultMap>
+
+    <!--这里的id为订单的id-->
+    <select id="findOrderDto" resultMap="OrderDtoMap">
+        select
+        <include refid="orderColumns"/>
+        FROM
+        itemorder AS o
+        LEFT JOIN expense AS e ON o.orderId = e.orderId
+        LEFT JOIN address AS a ON a.id = o.addressId
+        WHERE o.id = #{id}
+    </select>
+
+<!--    orderStatus,beUserDelete-->
+    <!--这里的id为订单的-->
+    <select id="orderDtoList" resultMap="OrderDtoMap">
+        select
+        <include refid="orderColumns"/>
+        FROM
+        itemorder AS o
+        LEFT JOIN expense AS e ON o.orderId = e.orderId
+        LEFT JOIN address AS a ON a.id = o.addressId
+        <where>
+            <if test="userId != null and userId != ''">
+                AND o.account = #{userId}
+            </if>
+            <if test="orderStatus != null and orderStatus != ''">
+                AND o.orderStatus = #{orderStatus}
+            </if>
+                AND o.beUserDelete = #{beUserDelete}
+        </where>
+        order by o.orderTime DESC
+        limit #{pageNum},#{pageSize}
+    </select>
+
+    <sql id="orderDetailColumns">
+          o.orderid,
+          o.num,
+          o.price,
+          b.name,
+          b.id,
+          b.producer,
+          b.img,
+          b.birthday,
+          b.marketPrice,
+          b.price AS itemPrice,
+          b.description
+    </sql>
+
+    <resultMap id="OrderDetailDtoMap" type="com.store.entity.dto.OrderDetailDto">
+        <id column="{orderId,id}" property="{orderId,itemId}"/>
+        <result column="orderId" property="orderId"/>
+        <result column="num" property="num"/>
+        <result column="price" property="price"/>
+        <association property="item" javaType="com.store.entity.book.Item">
+            <id column="id" jdbcType="BIGINT" property="id"/>
+            <result column="name" property="name"/>
+            <result column="producer" property="producer"/>
+            <result column="birthday" property="birthday"/>
+            <result column="marketPrice" property="marketPrice"/>
+            <result column="itemPrice" property="price"/>
+            <result column="img" property="img"/>
+            <result column="description" property="description"/>
+        </association>
+    </resultMap>
+
+    <!---->
+    <select id="findOrderDetailDtoList" resultMap="OrderDetailDtoMap">
+        select
+        <include refid="orderDetailColumns"/>
+        FROM
+        orderdetail AS o
+        LEFT JOIN item AS b ON o.itemId = b.id
+        where o.orderId = #{orderId}
+    </select>
+
+
+    <select id="count" resultType="int">
+        select count(*) from itemorder
+        <where>
+            <if test="userId != null and userId != ''">
+                AND itemorder.account = #{userId}
+            </if>
+            <if test="orderStatus != null and orderStatus != ''">
+                AND orderStatus = #{orderStatus}
+            </if>
+                AND beUserDelete = #{beUserDelete}
+        </where>
+    </select>
+
+
+    <!--得到订单的统计数据getOrderStatistic-->
+    <select id="getOrderStatistic" resultType="com.store.entity.dto.OrderStatistic">
+        SELECT orderTime, count(orderTime) as count, sum(finallyPrice) as amount
+            FROM (
+                SELECT DATE_FORMAT(orderTime, "%Y-%m-%d") as orderTime,id,finallyPrice
+                FROM itemorder join expense on itemorder.orderId = expense.orderId
+                WHERE orderTime &gt;= #{beginDate} and  orderTime &lt;= #{endDate}
+            ) AS dateOrder
+        GROUP BY orderTime
+    </select>
+</mapper>
